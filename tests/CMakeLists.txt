@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(stm_lcd_st7789_test C)
+enable_testing()
+add_subdirectory(.. component)
+add_executable(test_panel test_panel.c)
+target_link_libraries(test_panel PRIVATE stm_lcd_st7789)
+add_test(NAME test_panel COMMAND test_panel)
