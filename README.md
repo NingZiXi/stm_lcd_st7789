@@ -2,6 +2,8 @@
 
 ST7789 SPI 屏幕芯片驱动。库不初始化 STM32 HAL、SPI、GPIO 或 LVGL；板级代码传入 IO、延时和可选复位回调。它只负责 ST7789 命令、坐标窗口和 RGB565 绘图，不与其他屏幕芯片共用一个实现。完整的 CubeMX、HAL SPI、LVGL 接入示例见[显示与触摸接入指南](https://github.com/NingZiXi/stm32-hal-lib/blob/main/docs/display-components.md)。
 
+完整中文示例：[`examples/stm32_hal/README.md`](examples/stm32_hal/README.md)（含可移入 CM7 工程的 `example.c` / `example.h`）。
+
 ```c
 stm_lcd_st7789_t panel = {0};
 stm_lcd_st7789_config_t cfg = {
