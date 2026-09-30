@@ -1,41 +1,27 @@
-# stm_lcd_st7789：STM32 HAL SPI 接入示例
+# lcd_st7789：STM32 HAL 接入示例
 
-本目录的 `example.h` / `example.c` 可直接复制到 CubeMX 生成的 **CM7 用户代码目录**，也可把 `example.c` 加入 CM7 目标源码。它演示阻塞 SPI、CS/DC、可选复位、芯片初始化与左上角 2×2 RGB565 测试块；**尚未经过实际屏幕验证**。不是完整的 CubeMX 工程，不包含 ST HAL/CMSIS。其他 MCU 系列请把 `stm32h7xx_hal.h` 换成对应 HAL 头文件。
+本目录提供可复制到已有 HAL 应用的 `example.c` / `example.h`，不是完整 CubeMX 工程。先初始化板级时钟、GPIO 和总线，再传入实际 HAL 句柄/引脚。代码使用 STM32H7 HAL，其他系列自行替换头文件；示例不会自动编入组件库。
 
-1. 根据实物确认芯片确为 ST7789、分辨率、供电、CS/DC/RST 接线、颜色顺序和偏移；先在 CubeMX 初始化 SPI（8-bit）和 GPIO，软件控制 CS/DC。
-2. 添加本组件并链接 `stm_lcd_st7789`，把 `example.c` 加入同一 CM7 应用目标。以实际生成的 SPI 句柄与引脚宏替换下列占位符；没有 RST 引脚时将 `rst_port` 设为 `NULL`。
-3. 在应用入口调用（不要改写 CubeMX 自动生成区）：
+当前示例对应未发布的新 API；软件验证通过后仍需按实物回归。ST7789/ST7796 仅有主机验证，尚未实板验证。
 
-```c
-#include "example.h"
-#include "spi.h"
-#include "gpio.h"
+## 接入步骤
 
-static stm_lcd_st7789_t panel;
-static stm_lcd_st7789_example_board_t panel_board;
-
-void app_main(void)
-{
-    panel_board = (stm_lcd_st7789_example_board_t){
-        .spi = &hspi_display, /* 换成实际 SPI 句柄 */
-        .cs_port = LCD_CS_GPIO_Port, .cs_pin = LCD_CS_Pin,
-        .dc_port = LCD_DC_GPIO_Port, .dc_pin = LCD_DC_Pin,
-        .rst_port = LCD_RST_GPIO_Port, .rst_pin = LCD_RST_Pin,
-        .width = PANEL_WIDTH, .height = PANEL_HEIGHT,
-        .x_gap = 0, .y_gap = 0,
-    };
-    int rc = stm_lcd_st7789_example_start(&panel, &panel_board);
-    if (rc != 0) { /* 用项目的日志接口记录 rc，停止后续绘图。 */ }
-    /* 初始化成功后可继续调用 stm_lcd_st7789_draw_bitmap(&panel, ...)。 */
-}
-```
-
-`panel_board` 与 `panel` 必须长期有效。`x2/y2` 为不包含的右下角坐标；像素采用 RGB565 高字节先发，若实物颜色反转应核对屏幕 MADCTL、模组色序和 LVGL 字节交换配置。SPI 与其他设备共用时，在 `transmit()` 中从拉低 CS 到拉高 CS 的整个事务外加互斥锁；不得从中断里使用本阻塞示例。SPI 发送失败会返回错误，不能继续绘图。背光 GPIO、供电与实际屏幕时序由板级代码实现。
-
-在 CM7 的 `CMakeLists.txt` 把复制到 `App/` 的示例源码加入应用目标（具体目录名按工程调整）：
+1. 将组件和 stm_common 加入 CMake；LVGL port 先提供 LVGL 9 target。
+2. 将本目录两个源码文件复制到应用，替换 HAL 头文件和实际板级参数。
+3. 以 NULL 初始化句柄，按 example.h 的 start 接口创建；板级结构体必须持久有效。
+4. 循环绘图/读取触点或调用 LVGL handler，检查每一步 `err != STM_OK`。
+5. 停止所有访问后调用 `lcd_st7789_delete(&handle)`。
 
 ```cmake
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/App/example.c)
+target_sources(your_firmware PRIVATE App/example.c)
+target_include_directories(your_firmware PRIVATE App)
+target_link_libraries(your_firmware PRIVATE stm_lcd_st7789)
 ```
 
-中文主页：[README.md](../../README.md)；完整接入说明：[显示与触摸组件接入指南](https://github.com/NingZiXi/stm32-hal-lib/blob/main/docs/display-components.md)。
+HAL_TIMEOUT 映射为 STM_ERR_TIMEOUT，HAL_ERROR/HAL_BUSY 映射为 STM_ERR_IO，start 失败保留首个错误并回收本次创建的对象，重复 start 不覆盖已有句柄。传输同步完成后才能复用缓冲；阻塞 API 不从中断调用。
+
+## SPI 板级填写
+
+配置 8-bit SPI，按实际模组填写 SPI 模式/频率、CS/DC/RST、宽高和 x_gap/y_gap。start 的两个参数为 `lcd_st7789_handle_t *` 和 `lcd_st7789_example_board_t *`；它按 create/reset/init/draw 绘制 2×2 RGB565 红绿蓝白测试块。CS 覆盖 RAMWR 和全部像素，分段发送不会提前释放 CS；共享总线须在整个 transmit 外加锁。线上 RGB565 大端字节序由此示例的像素数组体现，不对 LVGL 数据隐式交换。
+
+完整 API、错误和资源契约见[中文主页](../../README.md)。
