@@ -78,4 +78,6 @@ ctest --test-dir build/tests --output-on-failure
 
 主机测试覆盖参数/配置、分配失败、资源回收、多实例和错误传递，并编译 C11/C++17 公共头文件。测试分配器仅用于测试构建，不加入产品固件。中文 HAL 示例见 [examples/stm32_hal/README.md](examples/stm32_hal/README.md)。许可证见 [LICENSE](LICENSE)。
 
-当前为未发布的 API 软件迁移；已发布 `v0.1.0` 保留旧接口，迁移后的硬件回归待完成，尚未发布 v0.2.0。
+`v0.2.0` 采用不透明句柄、`create/delete` 和统一 `stm_err_t`，包含破坏性接口迁移，不保留旧接口包装。`v0.1.0` 继续保留；升级前按上表迁移类型、回调和生命周期。此版本的主机测试、C11/C++17 头文件、中文 HAL 示例及 H757 Debug/Release 集成构建已通过。
+
+本轮未接入此器件实物，发布范围仅为软件契约与构建验证，硬件回归仍待完成。
