@@ -56,7 +56,7 @@ if(NOT TARGET stm_lcd)
         endif()
         FetchContent_Declare(stm_lcd
             GIT_REPOSITORY "${STM_LCD_GIT_REPOSITORY}"
-            GIT_TAG c359e54a657be38aec90c797ea19ee3d492d9284 # stm_lcd v1.0.0
+            GIT_TAG 7e7c3f26d43881f9b14ae4268a3be20404a93835 # stm_lcd v1.1.0
         )
         FetchContent_MakeAvailable(stm_lcd)
     endif()
@@ -65,5 +65,3 @@ if(NOT TARGET stm_lcd)
     message(FATAL_ERROR "stm_lcd dependency did not provide the stm_lcd target")
 endif()
 target_link_libraries(stm_lcd_st7789 PUBLIC stm_lcd)
-
-# 未发布帧缓冲能力仅使用调用方提供的新版 stm_lcd；不伪造远程版本。

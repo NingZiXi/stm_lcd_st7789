@@ -1,5 +1,7 @@
 # stm_lcd_st7789：ST7789 通用面板驱动
 
+[![版本 v1.0.0](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/NingZiXi/stm_lcd_st7789/releases/tag/v1.0.0)
+
 ST7789 SPI 模组初始化参数保留慧勤智远实验 50 的原始值；不将其当作所有 ST7789 模组的通用初始化。 构造函数返回 `stm_lcd_panel_handle_t`，应用通过 `stm_lcd_panel_*` 使用；不保留旧芯片句柄包装。板级拥有总线、供电、背光与 GPIO；DSI/LTDC 时序和扫描帧缓冲不写入芯片驱动。
 
 ## 🤖 让 Agent 帮助接入
@@ -81,9 +83,9 @@ target_link_libraries(your_firmware PRIVATE stm_lcd_st7789 stm_lvgl_port)
 
 公开链接 `stm_common` 与 `stm_lcd`，核心不依赖 HAL、LVGL 或日志。`stm_common` 解析顺序为已有 target → 同级源码 → 固定 v1.0.0 提交 `ce3d186dde2d374a8e9c7b9068a7b88f97d57dc1`；自动获取支持 `FETCHCONTENT_SOURCE_DIR_STM_COMMON` 离线覆盖、`STM_COMMON_FETCH=OFF` 和 `STM_COMMON_GIT_REPOSITORY` 镜像。
 
-`stm_lcd` 解析顺序为已有 target → `STM_LCD_SOURCE_DIR` → `FETCHCONTENT_SOURCE_DIR_STM_LCD` → 同级源码 → 固定 v1.0.0 提交 `c359e54a657be38aec90c797ea19ee3d492d9284`。`STM_LCD_FETCH=OFF` 禁止下载；`STM_LCD_GIT_REPOSITORY` 可指向 GitHub/Gitee 镜像，默认固定 SHA 不改变。无效显式目录直接报错，不退回网络；多个组件使用同一 `stm_lcd` target/FetchContent 名称。
+`stm_lcd` 解析顺序为已有 target → `STM_LCD_SOURCE_DIR` → `FETCHCONTENT_SOURCE_DIR_STM_LCD` → 同级源码 → 固定 v1.1.0 提交 `7e7c3f26d43881f9b14ae4268a3be20404a93835`。`STM_LCD_FETCH=OFF` 禁止下载；`STM_LCD_GIT_REPOSITORY` 可指向 GitHub/Gitee 镜像，默认固定 SHA 不改变。无效显式目录直接报错，不退回网络；多个组件使用同一 `stm_lcd` target/FetchContent 名称。
 
-当前迁移组合的 ILI9881C、FT5206、GT9271 与新版 port 使用尚未发布的帧缓冲/原子寄存器扩展，**必须一起提供匹配的 `stm_lcd` 源码（聚合仓库 gitlink 固定）**；已发布 v1.0.0 不具备这些能力，配置时明确报错。ST7789/ST7796 核心仍可使用该正式框架的同步接口。依赖不自动追踪 main，也不伪造未来版本 SHA。
+当前正式组合使用 `stm_lcd v1.1.0` 的通用接口与帧缓冲/原子寄存器能力；五款芯片组件的自动下载均固定上述提交。复用已有 target 或本地源码时由应用保证版本匹配，ILI9881C、FT5206、GT9271 会检查 `STM_LCD_FRAMEBUFFER_API=1`；框架旧 `v1.0.0` 不含这些扩展。依赖不自动追踪 main。
 
 ## 软件验证与版本边界
 
@@ -95,7 +97,7 @@ ctest --test-dir build/tests --output-on-failure
 
 测试保留原协议用例，补充通用句柄、空参数/非法配置、重复创建、分配失败、借用回滚、删除重建、多实例与错误传递；公共头按 C11/C++17 消费。中文 HAL 示例见 [examples/stm32_hal](examples/stm32_hal/README.md)。同级新版 port 的集成测试将五种器件交给同一份 port 源码，并检查 PARTIAL/DIRECT 及失败路径。
 
-当前提交是尚未发布新版本的软件迁移，原 `v0.2.0` tag 保留原 API；未发布新 tag 或 Release。此次主机/真实 HAL 头文件编译不代表完整固件或硬件回归通过。原有板测范围属于旧提交，不能移用到新通用接口。
+`v1.0.0` 正式发布本次通用接口迁移，与旧 `v0.2.0` API 不兼容，不提供旧接口包装；原 tag 保留。此次主机/真实 HAL 头文件编译不代表完整固件或硬件回归通过。原有板测范围属于旧提交，不能移用到新通用接口。
 
 ## 许可证
 
