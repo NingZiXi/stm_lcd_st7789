@@ -1,27 +1,25 @@
-# lcd_st7789：STM32 HAL 接入示例
+# ST7789 STM32 HAL 接入示例
 
-本目录提供可复制到已有 HAL 应用的 `example.c` / `example.h`，不是完整 CubeMX 工程。先初始化板级时钟、GPIO 和总线，再传入实际 HAL 句柄/引脚。代码使用 STM32H7 HAL，其他系列自行替换头文件；示例不会自动编入组件库。
+源码为 [example.c](example.c) 和 [example.h](example.h)，使用真实 STM32H7 HAL 头文件；消费工程需先完成 SPI、CS/DC、逻辑尺寸/窗口偏移、可选 RST。 示例不猜引脚、时钟或屏幕通道。
 
-当前示例对应未发布的新 API；软件验证通过后仍需按实物回归。ST7789/ST7796 仅有主机验证，尚未实板验证。
+## 添加与启动
 
-## 接入步骤
+将 `example.c` 编入消费工程，并添加本目录 include，链接 `stm_lcd_st7789` 与实际 HAL target。组件间依赖按[组件 README](../../README.md)设置，使用本次迁移匹配的本地框架。
 
-1. 将组件和 stm_common 加入 CMake；LVGL port 先提供 LVGL 9 target。
-2. 将本目录两个源码文件复制到应用，替换 HAL 头文件和实际板级参数。
-3. 以 NULL 初始化句柄，按 example.h 的 start 接口创建；板级结构体必须持久有效。
-4. 循环绘图/读取触点或调用 LVGL handler，检查每一步 `err != STM_OK`。
-5. 停止所有访问后调用 `lcd_st7789_delete(&handle)`。
-
-```cmake
-target_sources(your_firmware PRIVATE App/example.c)
-target_include_directories(your_firmware PRIVATE App)
-target_link_libraries(your_firmware PRIVATE stm_lcd_st7789)
+```c
+static lcd_st7789_example_board_t board; // 初始化硬件字段；内嵌 IO 首次必须为零。
+static stm_lcd_panel_handle_t device = NULL;
+// 填写 board 的 HAL、引脚、尺寸等实际配置后：
+stm_err_t err = lcd_st7789_example_start(&device, &board);
+// 成功时把通用句柄传给 port；板级 board 不得离开作用域。
 ```
 
-HAL_TIMEOUT 映射为 STM_ERR_TIMEOUT，HAL_ERROR/HAL_BUSY 映射为 STM_ERR_IO，start 失败保留首个错误并回收本次创建的对象，重复 start 不覆盖已有句柄。传输同步完成后才能复用缓冲；阻塞 API 不从中断调用。
+`example_start` 建立通用 IO、创建设备、可选硬复位；面板还执行 init。失败回收本次拥有的设备和 IO，HAL/引脚/帧缓冲归应用。HAL_TIMEOUT → TIMEOUT，HAL_ERROR/HAL_BUSY → IO，驱动不吞错误。
 
-## SPI 板级填写
+`example_start` 初始化后发送 2×2 红/绿/蓝/白紧密像素，测试 SPI 字节顺序。示例同步发送，不包含 DMA。LVGL 使用 PARTIAL，必要时设置 `rgb565_swap=1`，不要在驱动再次交换。
 
-配置 8-bit SPI，按实际模组填写 SPI 模式/频率、CS/DC/RST、宽高和 x_gap/y_gap。start 的两个参数为 `lcd_st7789_handle_t *` 和 `lcd_st7789_example_board_t *`；它按 create/reset/init/draw 绘制 2×2 RGB565 红绿蓝白测试块。CS 覆盖 RAMWR 和全部像素，分段发送不会提前释放 CS；共享总线须在整个 transmit 外加锁。线上 RGB565 大端字节序由此示例的像素数组体现，不对 LVGL 数据隐式交换。
+## 接入同一个 LVGL port 与退出
 
-完整 API、错误和资源契约见[中文主页](../../README.md)。
+port 配置直接填写 `.io`、`.panel`、可选 `.touch`、外部缓冲和时钟，不增加芯片专用 LVGL 绘图/输入包装。删除顺序：先 `lvgl_port_delete(&port)`，然后 `lcd_st7789_example_stop(&device, &board)`；该函数删除设备后 deinit 内嵌 IO，不释放 HAL。在途/被借用/停止失败时保留资源，继续服务并重试，不清零有效对象。
+
+主机测试与真实 HAL 示例编译属于软件验证。此次迁移不烧录，不把旧 tag 的板测结论作为本示例硬件验收。
